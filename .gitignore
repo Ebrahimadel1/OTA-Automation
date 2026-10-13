@@ -1,0 +1,35 @@
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+storage_state.json
+*.lock
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+
+# Testing & Coverage
+.pytest_cache/
+test-results/
+playwright-report/
+trace.zip
+*.har
+
+# Media, logs & scratch dumps
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.zip
+*.html
+*.txt
+!requirements.txt
+!README.md
