@@ -47,6 +47,7 @@ def run_job(job_name: str, job_func):
         sync_service.print_report()
     except Exception as e:
         logger.error(f"Job {job_name} failed: {e}")
+        raise
     finally:
         browser_adapter.close()
         lock.release()

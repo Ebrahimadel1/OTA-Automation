@@ -114,8 +114,16 @@ class PortalBrowser:
                 logger.info(f"Generated fresh TOTP code (valid for {30 - (time.time() % 30):.1f}s)")
                 
                 otp_inputs = page.locator('.p-inputotp-input')
-                if otp_inputs.count() > 0:
-                    logger.info("Found PrimeVue OTP inputs. Focusing and typing code...")
+                otp_count = otp_inputs.count()
+                if otp_count == len(code):
+                    logger.info(f"Filling {otp_count} PrimeVue OTP inputs individually...")
+                    for idx, char in enumerate(code):
+                        box = otp_inputs.nth(idx)
+                        box.click()
+                        box.fill(char)
+                        self.human_delay(80, 150)
+                elif otp_count > 0:
+                    logger.info("Found PrimeVue OTP inputs. Focusing first and typing code...")
                     otp_inputs.first.click()
                     self.human_delay(200, 400)
                     page.keyboard.type(code, delay=120)
@@ -123,18 +131,24 @@ class PortalBrowser:
                     logger.info("Typing code into focused element...")
                     page.keyboard.type(code, delay=120)
                     
-                self.human_delay(500, 1000)
+                self.human_delay(800, 1500)
+                page.screenshot(path="debug_during_2fa.png", full_page=True)
                 
-                verify_btn = page.locator('button:has-text("Verify code")')
+                verify_btn = page.locator('button:has-text("Verify code"), button[type="submit"]').first
                 if verify_btn.is_visible():
                     logger.info("Clicking 'Verify code' button...")
-                    verify_btn.click()
+                    try:
+                        verify_btn.click(timeout=5000)
+                    except Exception as btn_err:
+                        logger.warning(f"Click on verify button failed ({btn_err}). Pressing Enter...")
+                        page.keyboard.press("Enter")
                 else:
+                    logger.info("Pressing Enter to submit 2FA...")
                     page.keyboard.press("Enter")
                     
                 # Wait for redirect away from auth pages
                 try:
-                    page.wait_for_url(lambda u: "second-factor" not in u and "login" not in u and "auth" not in u, timeout=20000)
+                    page.wait_for_url(lambda u: "second-factor" not in u and "login" not in u and "auth" not in u, timeout=25000)
                     logger.info(f"Redirect complete after 2FA: {page.url}")
                 except Exception as e:
                     logger.error(f"Wait for post-2FA redirect failed: {e}")

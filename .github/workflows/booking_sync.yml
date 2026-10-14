@@ -56,8 +56,8 @@ jobs:
         run: |
           python -m src.booking_sync.jobs.sync_all
 
-      - name: Upload Debug Artifacts on Failure
-        if: failure()
+      - name: Upload Debug Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: debug-artifacts
