@@ -27,6 +27,22 @@ class BookingsPage:
         self.page.goto(target_url, wait_until="domcontentloaded")
         self.browser_adapter.human_delay(2000, 3000)
 
+        # Check if auth was lost or redirected to login
+        if "/auth/login" in self.page.url or "login" in self.page.url.lower():
+            logger.info("Auth redirect detected in navigate_to_bookings. Triggering login...")
+            self.browser_adapter.login_if_needed(self.page)
+            self.page.goto(target_url, wait_until="domcontentloaded")
+            self.browser_adapter.human_delay(2000, 3000)
+
+        # If any filter is currently active in the UI, clear it
+        try:
+            clear_btn = self.page.locator('button:has-text("Clear"), a:has-text("Clear")').first
+            if clear_btn.is_visible(timeout=1500):
+                clear_btn.click()
+                self.browser_adapter.human_delay(500, 1000)
+        except Exception:
+            pass
+
     def set_sort_to_purchase_date_desc(self):
         logger.info("Ensuring sort is Purchase date descending...")
         # Sort is purchase date descending by default on the portal
@@ -80,8 +96,8 @@ class BookingsPage:
                 self.browser_adapter.login_if_needed(self.page)
                 self.page.goto(current_page_url, wait_until="domcontentloaded")
             
-            # Wait for booking list indicator
-            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), text="Bookings"', timeout=12000)
+            # Wait for booking list indicator with valid Playwright selectors
+            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=12000)
             return
         except Exception as e:
             logger.warning(f"go_back() had issue ({e}). Recovering with direct goto...")
@@ -92,7 +108,7 @@ class BookingsPage:
                 self.browser_adapter.login_if_needed(self.page)
             self.page.goto(current_page_url, wait_until="domcontentloaded")
             self.browser_adapter.human_delay(2000, 3000)
-            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), text="Bookings"', timeout=20000)
+            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=20000)
         except Exception as e2:
             logger.warning(f"Recovery goto encountered issue: {e2}")
 
@@ -111,10 +127,20 @@ class BookingsPage:
 
         # Wait for booking cards to render
         try:
-            self.page.wait_for_selector('button:has-text("Show details")', timeout=20000)
+            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=20000)
         except Exception as e:
-            logger.warning(f"No 'Show details' buttons found within timeout: {e}")
-            return bookings
+            logger.warning(f"No booking cards found within timeout: {e}")
+            if "/auth/login" in self.page.url or "login" in self.page.url.lower():
+                logger.warning("Session expired while extracting page! Re-logging in...")
+                self.browser_adapter.login_if_needed(self.page)
+                self.page.goto(self.get_current_url(), wait_until="domcontentloaded")
+                self.browser_adapter.human_delay(2000, 3000)
+                try:
+                    self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=15000)
+                except Exception:
+                    return bookings
+            else:
+                return bookings
 
         # Locate booking cards using verified container selectors
         card_locator_str = 'div.border.rounded-lg.mb-4'

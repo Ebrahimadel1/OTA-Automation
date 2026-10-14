@@ -137,7 +137,10 @@ class PortalBrowser:
                     page.wait_for_url(lambda u: "second-factor" not in u and "login" not in u and "auth" not in u, timeout=20000)
                     logger.info(f"Redirect complete after 2FA: {page.url}")
                 except Exception as e:
-                    logger.warning(f"Wait for post-2FA redirect warning: {e}")
+                    logger.error(f"Wait for post-2FA redirect failed: {e}")
+                    page.screenshot(path="debug_after_2fa.png", full_page=True)
+                    if any(term in page.url.lower() for term in ["second-factor", "login", "auth"]):
+                        raise RuntimeError(f"2FA authentication failed or timed out. Current URL: {page.url}")
                     
                 self.human_delay(2000, 3000)
                 page.screenshot(path="debug_after_2fa.png", full_page=True)

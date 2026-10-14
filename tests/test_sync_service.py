@@ -72,3 +72,20 @@ def test_sync_scenarios():
     # The service updates stats regardless, but the mock client doesn't store it
     assert service.stats["created"] == 2
     assert "GYG3" not in client.db
+
+def test_datetime_and_changes():
+    from src.booking_sync.sync_service import has_changes, is_same_datetime
+    
+    # Cairo UTC+2/UTC+3 test:
+    # 18:00 local Cairo is 16:00 UTC (during standard time +2)
+    cairo_local = "2026-11-09T18:00:00"
+    airtable_utc = "2026-11-09T16:00:00.000Z"
+    assert is_same_datetime(airtable_utc, cairo_local) is True
+    
+    existing = {"Date Trip": airtable_utc, "trip Name": "Sunset Cruise"}
+    incoming = {"Date Trip": cairo_local, "trip Name": "Sunset Cruise"}
+    assert has_changes(existing, incoming) is False
+    
+    # Changed date
+    different_date = {"Date Trip": "2026-11-10T18:00:00", "trip Name": "Sunset Cruise"}
+    assert has_changes(existing, different_date) is True

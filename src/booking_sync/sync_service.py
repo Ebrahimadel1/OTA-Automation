@@ -12,6 +12,38 @@ def compute_hash(fields: dict) -> str:
     sorted_json = json.dumps(hashable_data, sort_keys=True, default=str)
     return hashlib.sha256(sorted_json.encode('utf-8')).hexdigest()
 
+def is_same_datetime(val1, val2) -> bool:
+    """Compares two datetime representations across UTC and local timezones."""
+    s1 = str(val1).strip()
+    s2 = str(val2).strip()
+    if s1 == s2:
+        return True
+
+    norm1 = s1.replace(".000Z", "").replace("Z", "")
+    norm2 = s2.replace(".000Z", "").replace("Z", "")
+    if norm1 == norm2:
+        return True
+
+    try:
+        import pytz
+        tz = pytz.timezone(Config.PORTAL_TIMEZONE)
+
+        dt1 = datetime.fromisoformat(s1.replace("Z", "+00:00"))
+        if dt1.tzinfo is not None:
+            dt1 = dt1.astimezone(tz)
+        else:
+            dt1 = tz.localize(dt1)
+
+        dt2 = datetime.fromisoformat(s2.replace("Z", "+00:00"))
+        if dt2.tzinfo is not None:
+            dt2 = dt2.astimezone(tz)
+        else:
+            dt2 = tz.localize(dt2)
+
+        return abs((dt1 - dt2).total_seconds()) < 60
+    except Exception:
+        return norm1 == norm2
+
 def has_changes(existing_fields: dict, new_fields: dict) -> bool:
     """Checks whether any synced field has meaningfully changed compared to existing Airtable fields."""
     for k, new_val in new_fields.items():
@@ -19,16 +51,16 @@ def has_changes(existing_fields: dict, new_fields: dict) -> bool:
             continue
         old_val = existing_fields.get(k)
         if old_val is None:
+            if new_val == "" or new_val == 0:
+                continue
             return True
         # Compare numeric
         if isinstance(new_val, (int, float)) and isinstance(old_val, (int, float)):
-            if float(new_val) != float(old_val):
+            if abs(float(new_val) - float(old_val)) > 0.001:
                 return True
-        # Compare datetime/strings
+        # Compare datetime
         elif "date" in k.lower() or "trip" in k.lower():
-            old_str = str(old_val).replace(".000Z", "").replace("Z", "")
-            new_str = str(new_val).replace(".000Z", "").replace("Z", "")
-            if old_str != new_str:
+            if not is_same_datetime(old_val, new_val):
                 return True
         else:
             if str(old_val).strip() != str(new_val).strip():

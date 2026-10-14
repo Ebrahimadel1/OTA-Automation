@@ -226,9 +226,26 @@ At the beginning of every work session:
 - **Decisions made:**
   - Keep `recent_50.py` completely idempotent; subsequent runs will detect existing `Booking Nr.` and update only changed fields without duplicating records.
 
+### 2026-10-14 — Phase 2 Timeout, Selector Bug, and DateTime False-Positive Update Fixes
+- **Goal:** Fix Phase 2 (`recent_50`) 20s timeout, fix Playwright selector syntax crash in `_return_to_bookings_list`, fix UTC vs Cairo timezone mismatch in `has_changes`, and persist session in GitHub Actions.
+- **Changes made:**
+  - Fixed invalid selector syntax in `bookings_page.py` (`text="Bookings"` caused `Unexpected token "="`).
+  - Added session checking and auto-login recovery in `navigate_to_bookings()` and `extract_current_page_bookings()`.
+  - Added UI filter reset (`Clear` button) upon navigating to main bookings list.
+  - Implemented `is_same_datetime` in `sync_service.py` to reconcile UTC timestamps from Airtable with local Cairo timestamps from GYG, eliminating constant redundant updates.
+  - Hardened 2FA flow in `browser.py` to raise explicit `RuntimeError` and capture screenshots on failure instead of silently continuing unauthenticated.
+  - Added `actions/cache@v4` in `.github/workflows/booking_sync.yml` to persist `storage_state.json` across hourly runs.
+  - Added unit test in `test_sync_service.py` covering Cairo vs UTC equality.
+- **Commands/tests run:**
+  - `python -m pytest tests/test_sync_service.py`
+  - `python -m pytest tests/test_field_mapping.py`
+- **Results:** All tests passing.
+- **Decisions made:** Session caching in GitHub Actions minimizes repeated OTP requests and bot protection blocks.
+
 ## 10. Current status
-**Phase:** 5 Complete (`recent_50` verified and operational in live Airtable).  
-**Scraper Status:** 100% Operational (Login, 2FA, Session Cache, Card Extraction, Multi-page Pagination).  
-**Airtable Status:** 100% Operational (Live read, create, update, idempotency verified).  
-**Next action:** Test and verify `upcoming_7_days.py` (Activity date filter sync).
+**Phase:** 5 Complete & Hardened.  
+**Scraper Status:** Fixed selector crash, auto-relogin on session drop, and resilient 2FA.  
+**Airtable Status:** Timezone-aware idempotency active (no more false 29 updates).  
+**Next action:** Commit, push, and trigger GitHub Actions run.
+
 

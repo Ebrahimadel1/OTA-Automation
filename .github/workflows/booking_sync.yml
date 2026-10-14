@@ -34,6 +34,14 @@ jobs:
         run: |
           playwright install --with-deps chromium
 
+      - name: Cache Session State
+        uses: actions/cache@v4
+        with:
+          path: storage_state.json
+          key: gyg-session-${{ github.run_id }}
+          restore-keys: |
+            gyg-session-
+
       - name: Run Bookings Sync (Upcoming 7 Days + Recent 50)
         env:
           GYG_LOGIN_EMAIL: ${{ secrets.GYG_LOGIN_EMAIL }}
