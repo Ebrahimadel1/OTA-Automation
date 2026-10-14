@@ -19,6 +19,16 @@ class BookingsPage:
         query_str = "&".join(f"{k}={v}" for k, v in params.items())
         return f"{self.base_url}?{query_str}"
 
+    def reset_page(self):
+        """Closes the current page and opens a clean fresh tab in the same authenticated session."""
+        try:
+            self.page.close()
+        except Exception:
+            pass
+        self.page = self.browser_adapter.context.new_page()
+        self.query_params = {}
+        self.current_page_num = 1
+
     def navigate_to_bookings(self, page_num: int = 1):
         self.query_params = {}
         self.current_page_num = page_num
@@ -88,27 +98,32 @@ class BookingsPage:
         return self.go_to_page(self.current_page_num + 1)
 
     def _return_to_bookings_list(self, current_page_url: str, card_locator_str: str = 'div.border.rounded-lg.mb-4'):
-        """Safely returns to the bookings list after extracting email using go_back, with direct recovery if needed."""
+        """Safely returns to the bookings list after extracting email using fast check or direct recovery."""
         try:
             self.page.go_back(wait_until="domcontentloaded")
-            self.browser_adapter.human_delay(1000, 1500)
+            self.browser_adapter.human_delay(500, 800)
             if "/auth/login" in self.page.url:
                 self.browser_adapter.login_if_needed(self.page)
                 self.page.goto(current_page_url, wait_until="domcontentloaded")
             
-            # Wait for booking list indicator with valid Playwright selectors
-            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=12000)
+            # Quick check if booking list is immediately visible
+            list_indicator = self.page.locator('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4').first
+            if list_indicator.is_visible():
+                return
+            
+            # Short wait up to 3s before recovering directly
+            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=3000)
             return
-        except Exception as e:
-            logger.warning(f"go_back() had issue ({e}). Recovering with direct goto...")
+        except Exception:
+            pass
 
-        # Fallback: Navigate directly back to current_page_url
+        # Fast Direct Recovery: Navigate directly back to current_page_url without wasting time
         try:
             if "/auth/login" in self.page.url:
                 self.browser_adapter.login_if_needed(self.page)
             self.page.goto(current_page_url, wait_until="domcontentloaded")
-            self.browser_adapter.human_delay(2000, 3000)
-            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=20000)
+            self.browser_adapter.human_delay(1000, 1500)
+            self.page.wait_for_selector('button:has-text("Show details"), button:has-text("Hide details"), div.border.rounded-lg.mb-4', timeout=15000)
         except Exception as e2:
             logger.warning(f"Recovery goto encountered issue: {e2}")
 

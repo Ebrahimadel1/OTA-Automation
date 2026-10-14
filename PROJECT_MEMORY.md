@@ -242,10 +242,22 @@ At the beginning of every work session:
 - **Results:** All tests passing.
 - **Decisions made:** Session caching in GitHub Actions minimizes repeated OTP requests and bot protection blocks.
 
+### 2026-10-14 — Reversing Phase Order to Prioritize Recent 50 and Clean Page Reset
+- **Goal:** Execute `recent_50` on clean default portal state to sync newest bookings first, followed by `upcoming_7_days` in a clean tab (`reset_page()`), and optimize email extraction speed.
+- **Changes made:**
+  - Reversed execution order in `sync_all.py`: `recent_50_logic` runs first, followed by `upcoming_7_days_logic`.
+  - Added `reset_page()` to `BookingsPage` to open a clean new browser tab between phases.
+  - Optimized `_return_to_bookings_list` in `bookings_page.py` with fast indicator check and 3s max timeout before immediate direct recovery.
+  - Updated `MockBookingsPage` in `tests/test_jobs.py` to support `reset_page()`.
+- **Commands/tests run:**
+  - `python -m pytest tests/test_sync_service.py tests/test_field_mapping.py`
+- **Results:** 4 unit tests passing.
+- **Decisions made:** Starting with `recent_50` leverages the portal's natural unfiltered state and ensures new purchases are created first without being masked by date filters.
+
 ## 10. Current status
-**Phase:** 5 Complete & Hardened.  
-**Scraper Status:** Fixed selector crash, auto-relogin on session drop, and resilient 2FA.  
-**Airtable Status:** Timezone-aware idempotency active (no more false 29 updates).  
-**Next action:** Commit, push, and trigger GitHub Actions run.
+**Phase:** 5 Verified & Optimized.  
+**Execution Order:** Phase 1 = Recent 50 (clean default state), Phase 2 = Upcoming 7 Days (clean tab + date filter).  
+**Performance:** Email extraction return accelerated.  
+**Next action:** Commit, push, and run GitHub Actions workflow.
 
 

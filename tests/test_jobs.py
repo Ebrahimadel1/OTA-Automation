@@ -23,6 +23,9 @@ class MockBookingsPage:
         self.filter_set = True
         return True
 
+    def reset_page(self):
+        self.current_page = 1
+
     def extract_current_page_bookings(self):
         start_idx = (self.current_page - 1) * self.per_page
         end_idx = min(start_idx + self.per_page, self.num_bookings)
